@@ -84,3 +84,30 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description', 'icon', 'icon_color', 'is_active', 'order']
+
+
+
+
+
+from .models import Order, OrderItem
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = '__all__'
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        fields = '__all__'
+        read_only_fields = ['user', 'status', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        items_data = self.context.get('items_data', [])   # frontend se bhejo
+        order = Order.objects.create(user=user, **validated_data)
+        for item in items_data:
+            OrderItem.objects.create(order=order, **item)
+        return order

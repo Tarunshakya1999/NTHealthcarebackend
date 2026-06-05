@@ -99,3 +99,83 @@ class ServiceViewSet(viewsets.ModelViewSet):
         services = self.get_queryset()
         serializer = self.get_serializer(services, many=True)
         return Response(serializer.data)
+    
+
+
+import json
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all().order_by('-created_at')
+        return Order.objects.filter(user=user).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        items_raw = data.get('items', '[]')
+        # Frontend JSON string भेज रहा है, parse करो
+        if isinstance(items_raw, str):
+            items_data = json.loads(items_raw)
+        else:
+            items_data = items_raw
+
+        # items और empty_cart को data से हटाओ ताकि serializer validate कर सके
+        data.pop('items', None)
+        empty_cart = data.pop('empty_cart', None)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+
+        # Order items create करो
+        for item in items_data:
+            product_id = item.pop('product_id', None)
+            if product_id:
+                try:
+                    product = Product.objects.get(id=product_id)
+                    item['product'] = product
+                except Product.DoesNotExist:
+                    pass
+            OrderItem.objects.create(order=order, **item)
+
+        # अगर पूरा cart check out किया है तो cart खाली करो
+        if empty_cart == 'true':
+            CartItem.objects.filter(user=request.user).delete()
+
+        return Response(OrderSerializer(order, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    # ... बाकी actions (update_status, request_return, cancel) पहले जैसे रखो
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def update_status(self, request, pk=None):
+        order = self.get_object()
+        new_status = request.data.get('status')
+        if new_status in dict(Order.STATUS_CHOICES):
+            order.status = new_status
+            order.save()
+            return Response({'status': 'updated'})
+        return Response({'error': 'invalid status'}, status=400)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def request_return(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response({'error': 'Not allowed'}, status=403)
+        if order.status == 'DELIVERED':
+            order.status = 'RETURN_REQUESTED'
+            order.save()
+            return Response({'status': 'return requested'})
+        return Response({'error': 'Order not delivered'}, status=400)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response({'error': 'Not allowed'}, status=403)
+        if order.status in ['PENDING', 'VERIFIED', 'PROCESSING']:
+            order.status = 'CANCELLED'
+            order.save()
+            return Response({'status': 'cancelled'})
+        return Response({'error': 'Cannot cancel'}, status=400)
