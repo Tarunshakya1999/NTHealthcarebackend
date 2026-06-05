@@ -62,11 +62,15 @@ class UserProfileAdmin(admin.ModelAdmin):
 class ServiceAdmin(admin.ModelAdmin):
     list_display = ['title', 'is_active', 'order']
 
+from django.contrib import admin
+from .models import Order, OrderItem
 
-# ========== New Order & OrderItem Admin ==========
+# ──────────────────────────────────────────────
+# OrderItem Inline
+# ──────────────────────────────────────────────
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
-    extra = 0  # don't show empty extra rows
+    extra = 0
     readonly_fields = ['product_name', 'product_price', 'quantity', 'product_image']
     fields = ['product', 'product_name', 'product_price', 'quantity', 'product_image']
     can_delete = False
@@ -74,7 +78,9 @@ class OrderItemInline(admin.TabularInline):
     def has_add_permission(self, request, obj=None):
         return False
 
-
+# ──────────────────────────────────────────────
+# Order Admin
+# ──────────────────────────────────────────────
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
@@ -97,9 +103,12 @@ class OrderAdmin(admin.ModelAdmin):
         }),
     )
     inlines = [OrderItemInline]
-    actions = ['mark_as_verified', 'mark_as_processing', 'mark_as_shipped', 'mark_as_delivered', 'cancel_orders']
+    actions = [
+        'mark_as_verified', 'mark_as_processing', 'mark_as_shipped',
+        'mark_as_delivered', 'cancel_orders'
+    ]
 
-    # Custom admin actions to quickly change status
+    # Bulk status update actions
     def mark_as_verified(self, request, queryset):
         queryset.update(status='VERIFIED')
     mark_as_verified.short_description = "Mark selected as Payment Verified"
@@ -120,7 +129,9 @@ class OrderAdmin(admin.ModelAdmin):
         queryset.update(status='CANCELLED')
     cancel_orders.short_description = "Cancel selected orders"
 
-
+# ──────────────────────────────────────────────
+# OrderItem Admin (optional)
+# ──────────────────────────────────────────────
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ['order_id', 'product_name', 'quantity', 'product_price']
