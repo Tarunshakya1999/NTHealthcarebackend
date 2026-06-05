@@ -1,73 +1,14 @@
 from django.contrib import admin
-from myapp.models import *
+from myapp.models import Product, CartItem, MyQRCode, ContactUs, UserProfile, Order, OrderItem
 
-# Register your models here.
+# ---------- Existing models (simple registration) ----------
 admin.site.register(Product)
-admin.site.register(MyQRCode)
 admin.site.register(CartItem)
+admin.site.register(MyQRCode)
 admin.site.register(ContactUs)
 admin.site.register(UserProfile)
 
-
-# backend/services/admin.py
-from django.contrib import admin
-from .models import Service
-
-@admin.register(Service)
-class ServiceAdmin(admin.ModelAdmin):
-    list_display = ['title', 'icon', 'is_active', 'order', 'created_at']
-    list_editable = ['is_active', 'order']
-    list_filter = ['is_active', 'created_at']
-    search_fields = ['title', 'description']
-    fieldsets = (
-        ('Service Information', {
-            'fields': ('title', 'description', 'icon', 'icon_color')
-        }),
-        ('Settings', {
-            'fields': ('is_active', 'order')
-        }),
-    )
-
-
-
-from django.contrib import admin
-from .models import (
-    Product, CartItem, MyQRCode, ContactUs,
-    UserProfile, Service, Order, OrderItem  # new imports
-)
-
-# ----- Existing admin registrations (if any) -----
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price', 'discounted_price']
-    search_fields = ['name']
-
-@admin.register(CartItem)
-class CartItemAdmin(admin.ModelAdmin):
-    list_display = ['user', 'product', 'quantity', 'added_at']
-
-@admin.register(MyQRCode)
-class MyQRCodeAdmin(admin.ModelAdmin):
-    list_display = ['name']
-
-@admin.register(ContactUs)
-class ContactUsAdmin(admin.ModelAdmin):
-    list_display = ['name', 'email']
-
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'phone']
-
-@admin.register(Service)
-class ServiceAdmin(admin.ModelAdmin):
-    list_display = ['title', 'is_active', 'order']
-
-from django.contrib import admin
-from .models import Order, OrderItem
-
-# ──────────────────────────────────────────────
-# OrderItem Inline
-# ──────────────────────────────────────────────
+# ---------- OrderItem Inline ----------
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
@@ -78,9 +19,7 @@ class OrderItemInline(admin.TabularInline):
     def has_add_permission(self, request, obj=None):
         return False
 
-# ──────────────────────────────────────────────
-# Order Admin
-# ──────────────────────────────────────────────
+# ---------- Order Admin ----------
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
@@ -108,7 +47,6 @@ class OrderAdmin(admin.ModelAdmin):
         'mark_as_delivered', 'cancel_orders'
     ]
 
-    # Bulk status update actions
     def mark_as_verified(self, request, queryset):
         queryset.update(status='VERIFIED')
     mark_as_verified.short_description = "Mark selected as Payment Verified"
@@ -129,9 +67,7 @@ class OrderAdmin(admin.ModelAdmin):
         queryset.update(status='CANCELLED')
     cancel_orders.short_description = "Cancel selected orders"
 
-# ──────────────────────────────────────────────
-# OrderItem Admin (optional)
-# ──────────────────────────────────────────────
+# ---------- OrderItem Admin (optional) ----------
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ['order_id', 'product_name', 'quantity', 'product_price']
