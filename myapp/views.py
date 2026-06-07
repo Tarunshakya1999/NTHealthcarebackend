@@ -137,8 +137,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 try:
                     product = Product.objects.get(id=product_id)
                     item['product'] = product
-                    if product.image:
-                     item['product_image'] = request.build_absolute_uri(product.image.url)
                 except Product.DoesNotExist:
                     pass
             OrderItem.objects.create(order=order, **item)
