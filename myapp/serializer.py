@@ -111,3 +111,13 @@ class OrderSerializer(serializers.ModelSerializer):
         for item in items_data:
             OrderItem.objects.create(order=order, **item)
         return order
+    
+
+
+from .models import CancelRequest
+
+class CancelRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CancelRequest
+        fields = '__all__'
+        read_only_fields = ['user', 'status', 'created_at', 'admin_remarks']

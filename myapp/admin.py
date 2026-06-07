@@ -72,3 +72,43 @@ class OrderAdmin(admin.ModelAdmin):
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ['order_id', 'product_name', 'quantity', 'product_price']
     search_fields = ['product_name', 'order__id']
+
+
+
+
+
+
+
+from .models import CancelRequest
+
+@admin.register(CancelRequest)
+class CancelRequestAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order_id', 'user', 'reason_type', 'status', 'created_at']
+    list_filter = ['status', 'reason_type', 'created_at']
+    search_fields = ['order__id', 'user__username']
+    readonly_fields = ['created_at']
+    fieldsets = (
+        ('Cancel Info', {
+            'fields': ('order', 'user', 'reason_type', 'custom_reason')
+        }),
+        ('Status', {
+            'fields': ('status', 'admin_remarks')
+        }),
+    )
+    actions = ['approve_cancel', 'reject_cancel']
+
+    def approve_cancel(self, request, queryset):
+        for req in queryset:
+            req.status = 'APPROVED'
+            req.order.status = 'CANCELLED'
+            req.order.save()
+            req.save()
+    approve_cancel.short_description = "Approve selected cancellations"
+
+    def reject_cancel(self, request, queryset):
+        for req in queryset:
+            req.status = 'REJECTED'
+            req.order.status = 'PENDING'   # ya original status
+            req.order.save()
+            req.save()
+    reject_cancel.short_description = "Reject selected cancellations"

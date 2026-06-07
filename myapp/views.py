@@ -171,11 +171,66 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request, pk=None):
-        order = self.get_object()
-        if order.user != request.user:
-            return Response({'error': 'Not allowed'}, status=403)
-        if order.status in ['PENDING', 'VERIFIED', 'PROCESSING']:
-            order.status = 'CANCELLED'
+     order = self.get_object()
+     if order.user != request.user:
+        return Response({'error': 'Not allowed'}, status=403)
+     if order.status not in ['PENDING', 'VERIFIED', 'PROCESSING']:
+        return Response({'error': 'Order cannot be cancelled at this stage'}, status=400)
+
+    # Create cancel request
+     reason_type = request.data.get('reason_type')
+     custom_reason = request.data.get('custom_reason', '')
+
+     if not reason_type:
+        return Response({'error': 'Reason is required'}, status=400)
+
+     CancelRequest.objects.create(
+        order=order,
+        user=request.user,
+        reason_type=reason_type,
+        custom_reason=custom_reason
+    )
+
+    # Update order status to CANCELLATION_REQUESTED
+     order.status = 'CANCELLATION_REQUESTED'
+     order.save()
+
+     return Response({'status': 'cancellation requested'})
+    
+
+
+
+
+
+from .models import CancelRequest
+from .serializer import CancelRequestSerializer
+
+class CancelRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = CancelRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return CancelRequest.objects.all().order_by('-created_at')
+        return CancelRequest.objects.filter(user=user).order_by('-created_at')
+
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def update_status(self, request, pk=None):
+        cancel_req = self.get_object()
+        new_status = request.data.get('status')
+        if new_status in dict(CancelRequest.STATUS_CHOICES):
+            cancel_req.status = new_status
+            cancel_req.admin_remarks = request.data.get('admin_remarks', '')
+            cancel_req.save()
+
+            # Update associated order
+            order = cancel_req.order
+            if new_status == 'APPROVED':
+                order.status = 'CANCELLED'
+            elif new_status == 'REJECTED':
+                # revert to previous status (we store original status? not for now, set to PENDING)
+                order.status = 'PENDING'   # or you can store original status in CancelRequest
             order.save()
-            return Response({'status': 'cancelled'})
-        return Response({'error': 'Cannot cancel'}, status=400)
+            return Response({'status': 'updated'})
+        return Response({'error': 'invalid status'}, status=400)

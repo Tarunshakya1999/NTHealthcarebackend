@@ -88,9 +88,12 @@ class Order(models.Model):
         ('CANCELLED', 'Cancelled'),
         ('RETURN_REQUESTED', 'Return Requested'),
         ('RETURNED', 'Returned'),
+        ('CANCELLATION_REQUESTED', 'Cancellation Requested'), 
     ]
+ 
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=60, choices=STATUS_CHOICES, default='PENDING')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     payment_screenshot = models.ImageField(upload_to='payment_screenshots/', blank=True, null=True)
@@ -118,3 +121,30 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product_name} x {self.quantity}"
+    
+
+
+
+class CancelRequest(models.Model):
+    REASON_CHOICES = [
+        ('NOT_REQUIRED', 'Not Required Now'),
+        ('CHEAPER_ELSEWHERE', 'Found Cheaper Elsewhere'),
+        ('MISTAKE', 'Order Created by Mistake'),
+        ('LONG_DELIVERY', 'Delivery Time Too Long'),
+        ('OTHER', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='cancel_requests')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason_type = models.CharField(max_length=20, choices=REASON_CHOICES)
+    custom_reason = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    admin_remarks = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Cancel #{self.id} - Order #{self.order.id} ({self.status})"

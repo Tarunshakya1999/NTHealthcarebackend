@@ -9,6 +9,7 @@ router.register(r'qrcode',MyQRViewSetAPI, basename='myqr')
 router.register(r'contact',ContactUsViewSet, basename='contactus')
 router.register(r'services', ServiceViewSet, basename='service')
 router.register(r'orders', OrderViewSet, basename='order')   # new
+router.register(r'cancel-requests', CancelRequestViewSet, basename='cancelrequest')
 
 urlpatterns = [
     path('',include(router.urls)),
